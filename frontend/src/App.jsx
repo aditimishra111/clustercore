@@ -1,150 +1,130 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import "./App.css";
 
 function App() {
-  const studentId = "123"; // demo student id
-  const resumeRef = useRef(null);
+  const [studentId, setStudentId] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [education, setEducation] = useState("");
+  const [projects, setProjects] = useState("");
+  const [skills, setSkills] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    skills: "",
-    education: "",
-    projects: ""
-  });
+  // 🔁 AUTO LOAD when studentId changes
+  useEffect(() => {
+    if (!studentId) return;
 
-  const [resume, setResume] = useState(null);
+    const fetchResume = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/resume/${studentId}`
+        );
 
-  // SAVE RESUME
+        if (res.data) {
+          setName(res.data.name || "");
+          setEmail(res.data.email || "");
+          setPhone(res.data.phone || "");
+          setEducation(res.data.education || "");
+          setProjects(res.data.projects || "");
+          setSkills(res.data.skills?.join(", ") || "");
+          setMessage("Resume loaded automatically ✅");
+        } else {
+          setMessage("New resume ✍️");
+        }
+      } catch {
+        setMessage("New resume ✍️");
+      }
+    };
+
+    fetchResume();
+  }, [studentId]);
+
+  // SAVE / UPDATE
   const saveResume = async () => {
     try {
       await axios.post("http://localhost:5000/api/resume/save", {
         studentId,
         data: {
-          ...form,
-          skills: form.skills.split(",")
+          name,
+          email,
+          phone,
+          education,
+          projects,
+          skills: skills.split(",").map((s) => s.trim())
         }
       });
-
-      alert("Resume saved successfully");
-      fetchResume();
+      setMessage("Resume saved successfully ✅");
     } catch (err) {
       console.error(err);
-      alert("Error saving resume");
+      setMessage("Error saving resume ❌");
     }
   };
 
-  // FETCH RESUME
-  const fetchResume = async () => {
-    const res = await axios.get(
-      `http://localhost:5000/api/resume/${studentId}`
-    );
-    setResume(res.data);
-  };
-
-  // FETCH ON PAGE LOAD
-  useEffect(() => {
-    fetchResume();
-  }, []);
-
-  // DOWNLOAD PDF
+  // PDF DOWNLOAD
   const downloadPDF = async () => {
-    if (!resumeRef.current) {
-      alert("Resume not loaded yet");
-      return;
-    }
-
-    const canvas = await html2canvas(resumeRef.current, {
-      scale: 2,
-      useCORS: true
-    });
-
+    const element = document.getElementById("resume-preview");
+    const canvas = await html2canvas(element);
     const imgData = canvas.toDataURL("image/png");
+
     const pdf = new jsPDF("p", "mm", "a4");
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.addImage(imgData, "PNG", 10, 10, 190, 0);
     pdf.save("resume.pdf");
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h2>Resume Builder</h2>
-
+    <div className="container">
       {/* FORM */}
-      <input
-        placeholder="Name"
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      /><br />
+      <div className="card">
+        <h2>Resume Builder</h2>
 
-      <input
-        placeholder="Email"
-        onChange={(e) => setForm({ ...form, email: e.target.value })}
-      /><br />
+        <input
+          placeholder="Student ID"
+          value={studentId}
+          onChange={(e) => setStudentId(e.target.value)}
+        />
 
-      <input
-        placeholder="Phone"
-        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-      /><br />
+        <input placeholder="Name" value={name}
+          onChange={(e) => setName(e.target.value)} />
 
-      <input
-        placeholder="Skills (comma separated)"
-        onChange={(e) => setForm({ ...form, skills: e.target.value })}
-      /><br />
+        <input placeholder="Email" value={email}
+          onChange={(e) => setEmail(e.target.value)} />
 
-      <input
-        placeholder="Education"
-        onChange={(e) => setForm({ ...form, education: e.target.value })}
-      /><br />
+        <input placeholder="Phone" value={phone}
+          onChange={(e) => setPhone(e.target.value)} />
 
-      <input
-        placeholder="Projects"
-        onChange={(e) => setForm({ ...form, projects: e.target.value })}
-      /><br /><br />
+        <input placeholder="Education" value={education}
+          onChange={(e) => setEducation(e.target.value)} />
 
-      <button onClick={saveResume}>Save Resume</button>
+        <input placeholder="Projects" value={projects}
+          onChange={(e) => setProjects(e.target.value)} />
 
-      <br /><br />
+        <input placeholder="Skills (comma separated)" value={skills}
+          onChange={(e) => setSkills(e.target.value)} />
 
-      {/* DOWNLOAD BUTTON */}
-      {resume && <button onClick={downloadPDF}>Download PDF</button>}
+        <button className="save" onClick={saveResume}>Save</button>
+        <button className="pdf" onClick={downloadPDF}>PDF</button>
 
-      {/* RESUME TEMPLATE */}
-      {resume && (
-        <div
-          ref={resumeRef}
-          style={{
-            marginTop: "30px",
-            padding: "20px",
-            width: "210mm",
-            background: "white",
-            color: "black",
-            border: "1px solid black"
-          }}
-        >
-          <h1>{resume.name}</h1>
-          <p><b>Email:</b> {resume.email}</p>
-          <p><b>Phone:</b> {resume.phone}</p>
+        <p>{message}</p>
+      </div>
 
-          <h3>Skills</h3>
-          <ul>
-            {resume.skills.map((skill, i) => (
-              <li key={i}>{skill}</li>
-            ))}
-          </ul>
+      {/* PREVIEW */}
+      <div className="preview" id="resume-preview">
+        <h2>{name}</h2>
+        <p>{email} | {phone}</p>
 
-          <h3>Education</h3>
-          <p>{resume.education}</p>
+        <h4>Education</h4>
+        <p>{education}</p>
 
-          <h3>Projects</h3>
-          <p>{resume.projects}</p>
-        </div>
-      )}
+        <h4>Projects</h4>
+        <p>{projects}</p>
+
+        <h4>Skills</h4>
+        <p>{skills}</p>
+      </div>
     </div>
   );
 }

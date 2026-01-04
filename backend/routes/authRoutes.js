@@ -1,52 +1,74 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/user");
+const Student = require("../models/Student"); // ✅ correct model
 
-// REGISTER
+console.log("authRoutes loaded");
+
+// ================= REGISTER STUDENT =================
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { studentId, name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+    const existingStudent = await Student.findOne({ email });
+    if (existingStudent) {
+      return res.status(400).json({ message: "Student already exists" });
     }
 
-    const user = await User.create({
+    const student = await Student.create({
+      studentId,
       name,
       email,
-      password,
-      role
+      password
     });
 
-    res.status(201).json(user);
+    res.status(201).json(student);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// LOGIN
+// ================= LOGIN STUDENT =================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    const student = await Student.findOne({ email });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
     }
 
-    if (user.password !== password) {
+    if (student.password !== password) {
       return res.status(401).json({ message: "Invalid password" });
     }
 
     res.json({
       message: "Login successful",
-      role: user.role,
-      userId: user._id
+      studentId: student.studentId,
+      mongoId: student._id
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// ================= UPDATE STUDENT PROFILE =================
+router.put("/update/:id", async (req, res) => {
+  try {
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    res.json(updatedStudent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ================= TEST ROUTE =================
+router.get("/test", (req, res) => {
+  res.send("AUTH ROUTE WORKING");
 });
 
 module.exports = router;

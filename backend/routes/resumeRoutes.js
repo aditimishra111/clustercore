@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Resume = require("../models/Resume");
 
-// SAVE resume
+// ================= SAVE / UPDATE RESUME =================
 router.post("/save", async (req, res) => {
   try {
     const { studentId, data } = req.body;
@@ -20,7 +20,7 @@ router.post("/save", async (req, res) => {
   }
 });
 
-// GET resume
+// ================= GET RESUME =================
 router.get("/:studentId", async (req, res) => {
   try {
     const resume = await Resume.findOne({ studentId: req.params.studentId });
